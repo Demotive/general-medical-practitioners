@@ -1,15 +1,15 @@
-UNAMENDED_CSV=$(shell find input/ -name 'epraccur_*.csv')
+UNAMENDED_CSV=$(shell find input/ -name 'egpcur_*.csv')
 AMENDMENT_CSVS=$(shell find input/monthly_amendments -name 'egpam_*.csv')
-AMENDMENT_PRACTICE_CSV=build/combined-amendments-only-gp-practices.csv
+AMENDMENT_PRACTITIONER_CSV=build/combined-amendments-only-gp-practitioners.csv
 
-FINAL_JSON=output/general-medical-practices.json
+FINAL_JSON=output/general-medical-practitioners.json
 
 .PHONY: all
 all: $(FINAL_JSON)
 
-$(AMENDMENT_PRACTICE_CSV): $(AMENDMENT_CSVS)
-	cat $(AMENDMENT_CSVS) | grep -v -e '^"G[0-9]\{7\}' > $(AMENDMENT_PRACTICE_CSV)
+$(AMENDMENT_PRACTITIONER_CSV): $(AMENDMENT_CSVS)
+	cat $(AMENDMENT_CSVS) | grep -e '^"G[0-9]\{7\}' > $(AMENDMENT_PRACTITIONER_CSV)
 
 .PHONY: $(FINAL_JSON)
-$(FINAL_JSON): $(UNAMENDED_CSV) $(AMENDMENT_PRACTICE_CSV)
-	./process/convert.py $(UNAMENDED_CSV) $(AMENDMENT_PRACTICE_CSV) > $(FINAL_JSON)
+$(FINAL_JSON): $(UNAMENDED_CSV) $(AMENDMENT_PRACTITIONER_CSV)
+	./process/convert.py $(UNAMENDED_CSV) $(AMENDMENT_PRACTITIONER_CSV) > $(FINAL_JSON)

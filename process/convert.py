@@ -21,19 +21,19 @@ HEADER = [
     'close_date',
     'status_code',
     'organisation_sub_type_code',
-    'commissioner',
-    'join_provider_purchaser_date',
-    'left_provider_purchaser_date',
+    'parent_organisation_code',
+    'join_parent_date',
+    'left_parent_date',
     'contact_telephone_number',
     'null_1',
     'null_2',
     'null_3',
     'amended_record_indicator',
     'null_4',
-    'provider_purchaser',
+    'current_care_organisation',
     'null_5',
-    'prescribing_setting',
     'null_6',
+    'null_7',
 ]
 
 
@@ -58,8 +58,9 @@ def usage():
 
 def apply_amendments(rows, amendments):
     for row in rows:
+        practitioner_code = row['organisation_code']
         try:
-            amended_row = amendments.pop(row['organisation_code'])
+            amended_row = amendments.pop(practitioner_code)
             sys.stderr.write('Amend {}: {} -> {}\n'.format(
                 row['organisation_code'], row, amended_row))
 
@@ -68,7 +69,7 @@ def apply_amendments(rows, amendments):
         except KeyError:  # no amended row for this practice
             yield row
 
-    sys.stderr.write('{} NEW practices: {}'.format(
+    sys.stderr.write('{} NEW practitioners: {}'.format(
         len(amendments.keys()),
         ', '.join(amendments.keys())))
 
@@ -100,29 +101,29 @@ def open_csv_file(filename):
 def filter_rows(csv_rows):
 
     def is_active_gp(row):
-        return row['prescribing_setting'] == '4' and row['status_code'] == 'A'
+        return row['status_code'] == 'A'
 
-    return filter(is_active_gp, csv_rows)
+    def is_locum(row):
+        return 'LOCUM' in row['name']
+
+    return filter(
+        lambda row: is_active_gp(row) and not is_locum(row),
+        csv_rows
+    )
 
 
 def transform_rows(rows):
-    def combine_address_parts(row):
-        address_part_keys = ['address_line_{}'.format(i)
-                             for i in [1, 2, 3, 4, 5]]
-
-        return ', '.join(
-            filter(None, [row[key].title() for key in address_part_keys]) +
-            [row['postcode']]
-        )
+    def format_name(name):
+        parts = name.split(' ')
+        return ' '.join(parts[1:] + [parts[0].title()])
 
     def transform_row(row):
-        combined_address = combine_address_parts(row)
 
         return OrderedDict([
-            ('organisation_code', row['organisation_code']),
-            ('name', row['name'].title()),
-            ('address', combined_address),
-            ('contact_telephone_number', row['contact_telephone_number']),
+            ('general_medical_practitioner_code', row['organisation_code']),
+            ('name', format_name(row['name'])),
+            ('practice', 'general-medical-practice:' +
+                         row['parent_organisation_code']),
         ])
 
     return map(transform_row, rows)
@@ -130,7 +131,8 @@ def transform_rows(rows):
 
 def output_json(rows):
     json.dump(
-        sorted(list(rows), key=lambda row: row['organisation_code']),
+        sorted(list(rows),
+               key=lambda row: row['general_medical_practitioner_code']),
         sys.stdout,
         indent=4)
 
