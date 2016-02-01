@@ -2,6 +2,7 @@
 
 import csv
 import json
+import re
 
 from collections import OrderedDict
 
@@ -103,13 +104,27 @@ def filter_rows(csv_rows):
     def is_active_gp(row):
         return row['status_code'] == 'A'
 
+    def has_plausible_name(row):
+        match = re.match(r"^([-A-Z'\s]*)(\b[A-Z]{1,5})$", row['name'])
+
+        if match is not None:
+            sys.stderr.write('Match: `{}`: {}\n'.format(row['name'], match))
+        else:
+            sys.stderr.write('Dropping "GP": `{}`\n'.format(row['name']))
+
+        return match is not None
+
     def is_locum(row):
         return 'LOCUM' in row['name']
 
-    return filter(
-        lambda row: is_active_gp(row) and not is_locum(row),
-        csv_rows
-    )
+    def is_valid_active_gp(row):
+        return (
+            has_plausible_name(row) and
+            is_active_gp(row) and
+            not is_locum(row)
+        )
+
+    return filter(is_valid_active_gp, csv_rows)
 
 
 def transform_rows(rows):
