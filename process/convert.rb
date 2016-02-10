@@ -84,6 +84,6 @@ practitioner_data = choices_data
   .sort_by(&:general_medical_practitioner_code)
 
 puts JSON.pretty_generate(
-  practitioner_data.map(&:to_hash),
+  practitioner_data.map(&:to_hash).uniq,
   indent: "    ",
 )
