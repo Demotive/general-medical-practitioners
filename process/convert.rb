@@ -36,14 +36,22 @@ private
   attr_reader :data
 
   def title_cased_name
-    name.gsub(/\b[A-Z]{2,}\b/, &:capitalize)
+    stripped_name.gsub(/\b[A-Z]{2,}\b/, &:capitalize)
+  end
+
+  def stripped_name
+    cleaned_name.gsub(/\s{2,}/, " ").strip
+  end
+
+  def cleaned_name
+    name.sub(/\([mf]\)/i, "")
   end
 
   def name
     [
       data.fetch("GivenName"),
       data.fetch("FamilyName"),
-    ].join(" ").gsub(/\s{2,}/, " ").strip
+    ].join(" ")
   end
 
   def practice_reference
