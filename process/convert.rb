@@ -39,7 +39,7 @@ private
     [
       data.fetch("GivenName"),
       data.fetch("FamilyName"),
-    ].join(" ")
+    ].join(" ").gsub(/\s{2,}/, " ").strip
   end
 
   def practice_reference
