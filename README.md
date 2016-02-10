@@ -17,10 +17,14 @@ The latest JSON data can be found at [https://github.com/nhsalpha/general-medica
 See also the [Open ODS project](https://github.com/open-ods/open-ods)
 
 ## Source Data Attribution
+
 Organisation Data Service, Health and Social Care Information Centre, licenced
 under the Open Government Licence v2.0  - Open Government Licence
 
 More information on the Organisation Data Service can be found [on the HSCIC
 website](http://systems.hscic.gov.uk/data/ods)
 
+Data sources:
 
+ - http://systems.hscic.gov.uk/data/ods/datadownloads/gppractice
+ - http://www.nhs.uk/aboutNHSChoices/aboutnhschoices/how-we-perform/Pages/datasets.aspx
