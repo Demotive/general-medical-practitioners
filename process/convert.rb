@@ -3,93 +3,43 @@
 require "csv"
 require "json"
 
-ODS_PRACTITIONER_HEADER = %w(
-  organisation_code
-  name
-  national_grouping
-  high_level_health_geography
-  address_line_1
-  address_line_2
-  address_line_3
-  address_line_4
-  address_line_5
-  postcode
-  open_date
-  close_date
-  status_code
-  organisation_sub_type_code
-  parent_organisation_code
-  join_parent_date
-  left_parent_date
-  contact_telephone_number
-  null_1
-  null_2
-  null_3
-  amended_record_indicator
-  null_4
-  current_care_organisation
-  null_5
-  null_6
-  null_7
-)
-
-def usage_message
-  "Usage: #{$0} ods_data_file.csv [amendment_file_1.csv ...]"
-end
-
-def load_ods_practitioners_csv(file_name)
-  hash = {}
-
-  CSV.read(file_name, headers: ODS_PRACTITIONER_HEADER).each { |row|
-    hash[row.fetch("organisation_code")] = row.to_hash
-  }
-
-  hash
-end
-
 class Practitioner
-  def initialize(ods_data)
-    @ods_data = ods_data
+  def initialize(data)
+    @data = data
   end
 
   def general_medical_practitioner_code
-    ods_data.fetch("organisation_code")
+    gmc_number
   end
 
-  def active?
-    ods_data.fetch("status_code") == "A"
+  def matched_record?
+    data.has_key?("GMCNumber") && data.has_key?("OrganisationCode")
   end
 
-  def locum?
-    name.index("LOCUM")
+  def has_sensible_gmc_number?
+    !%w(0000000 1234567).include?(gmc_number) && gmc_number =~ /[0-9]{7}/
   end
 
-  def plausible_name?
-    name =~ /^([-A-Z'\s]*)(\b[A-Z]{1,5})$/
+  def gp?
+    data.fetch("JobTitle") == "General Practitioner"
   end
 
   def to_hash
     {
       general_medical_practitioner_code: general_medical_practitioner_code,
-      name: formatted_name,
+      name: name,
       practice: practice_reference,
     }
   end
 
 private
-  attr_reader :ods_data
-
-  def formatted_name
-    surname, *initials = name.split(/ /, -1)
-
-    [
-      *initials,
-      surname.split(/\b/).map(&:capitalize).join,
-    ].join(" ")
-  end
+  attr_reader :data
 
   def name
-    ods_data.fetch("name")
+    [
+      data.fetch("GivenName"),
+      data.fetch("FamilyName"),
+    ].join(" ")
   end
 
   def practice_reference
@@ -97,26 +47,43 @@ private
   end
 
   def practice_code
-    ods_data.fetch("parent_organisation_code")
+    data.fetch("OrganisationCode")
+  end
+
+  def gmc_number
+    data.fetch("GMCNumber")
   end
 end
 
-ods_file = ARGV.fetch(0) { abort(usage_message) }
-ods_amendments = ARGV.drop(1)
-ods_data_files = [ods_file] + ods_amendments
+def usage_message
+  "Usage: #{$0} choices_staff_file.csv choices_practice_file.csv"
+end
 
-ods_data = ods_data_files
-  .map(&method(:load_ods_practitioners_csv))
-  .reduce(&:merge)
-  .values
-  .lazy
+def load_choices_csv(file_name)
+  CSV.read(file_name, col_sep: "\u00AC", quote_char: "\x00", encoding: "ISO-8859-1", headers: true).map(&:to_hash)
+end
+
+choices_staff_file = ARGV.fetch(0) { abort(usage_message) }
+choices_practice_file = ARGV.fetch(1) { abort(usage_message) }
+
+choices_practice_data = load_choices_csv(choices_practice_file).each.with_object({}) { |row, hash|
+  hash[row.fetch("OrganisationID")] = row
+}
+
+choices_staff_data = load_choices_csv(choices_staff_file)
+
+choices_data = choices_staff_data.map { |row|
+  choices_practice_data.fetch(row.fetch("OrganisationID"), {}).merge(row)
+}
+
+practitioner_data = choices_data
   .map(&Practitioner.method(:new))
-  .select(&:active?)
-  .reject(&:locum?)
-  .select(&:plausible_name?)
+  .select(&:matched_record?)
+  .select(&:gp?)
+  .select(&:has_sensible_gmc_number?)
   .sort_by(&:general_medical_practitioner_code)
 
 puts JSON.pretty_generate(
-  ods_data.map(&:to_hash),
+  practitioner_data.map(&:to_hash),
   indent: "    ",
 )
