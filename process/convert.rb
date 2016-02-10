@@ -36,7 +36,11 @@ private
   attr_reader :data
 
   def title_cased_name
-    stripped_name.gsub(/\b[A-Z]{2,}\b/, &:capitalize)
+    untitled_name.gsub(/\b[A-Z]{2,}\b/, &:capitalize)
+  end
+
+  def untitled_name
+    stripped_name.sub(/^Dr\.? /, "")
   end
 
   def stripped_name
