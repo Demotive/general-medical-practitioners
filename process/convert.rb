@@ -27,13 +27,17 @@ class Practitioner
   def to_hash
     {
       general_medical_practitioner_code: general_medical_practitioner_code,
-      name: name,
+      name: title_cased_name,
       practice: practice_reference,
     }
   end
 
 private
   attr_reader :data
+
+  def title_cased_name
+    name.gsub(/\b[A-Z]{2,}\b/, &:capitalize)
+  end
 
   def name
     [
